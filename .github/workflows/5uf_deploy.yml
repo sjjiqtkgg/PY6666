@@ -1,0 +1,36 @@
+name: 5UF Node Auto Fetch
+
+on:
+  schedule:
+    - cron: '0 */23 * * *'  # 每 23 小时自动跑一次
+  workflow_dispatch:        # 保留手动触发按钮
+
+jobs:
+  update-nodes:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Run 5UF Fetch Script
+        # 设置环境变量，确保 account.json 缓存文件也生成在当前仓库目录，避免每次都重新注册
+        env:
+          5UF_OUT_DIR: ${{ github.workspace }}
+        # 执行脚本，并强制将节点配置文件前缀命名为 5uf_nodes，输出到当前目录
+        run: |
+          python 5uf_node_fetch.py -o ./5uf_nodes
+
+      - name: Commit and Push changes
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          # 自动添加生成的节点文件和账号缓存文件
+          git add 5uf_nodes* account.json
+          git commit -m "Auto update 5UF nodes [skip ci]" || exit 0
+          git push
